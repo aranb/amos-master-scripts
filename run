@@ -1,0 +1,44 @@
+#!/bin/bash
+
+conf_folder=~/conf
+ycsb_clients_file=${conf_folder}/ycsb-clients
+master_file=${conf_folder}/master
+
+export clients=$(<${ycsb_clients_file})
+export master=$(<${master_file})
+
+export out_dir=~/out
+export ycsb_dir="~/inst/ycsb"
+export workload_dir=${ycsb_dir}/workloads
+export workloads="Sworkloada"
+
+export TABLE=usertable
+export CF=fam
+
+if [ "$#" -lt 3 ] 
+then
+	echo "Usage: `basename $0` <threads> <ops> <lable>" 1>&2
+	exit 1
+fi
+export threads=$1
+export ops=$2
+export label=$3
+
+for workload in ${workloads}
+do
+	# copy workload to clients
+	for client in $clients	
+	do
+		scp ~/inst/${workload} aran@${client}:${workload_dir}
+	done
+
+	# now run the ycsb clients
+	for client in $clients
+	do
+		echo "bash bin/run_client $client $workload &> ${out_dir}/amos-${label}-w${workload}-o${ops}-t${threads}.out"
+		bash ~/bin/run_client $client $workload &> ${out_dir}/amos-${label}-c${client}-w${workload}-o${ops}-t${threads}.out &
+		#sleep 1
+	done
+	wait
+done
+

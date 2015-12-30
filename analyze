@@ -1,0 +1,17 @@
+#!/bin/bash
+
+export results="Throughput READ UPDATE TRANSACTION"
+
+out=""
+heading=""
+for res in ${results}
+do
+	if [ ${res} = "Throughput" ]; then
+		out="$out$(grep ${res} $@ | awk '{sum+=$NF}; END{print sum}')\t"
+	else
+		out="$out$(grep ${res} $@ | awk '/Average/{sum+=$NF; n++}; END{print sum/n}')\t"
+	fi
+	heading="${heading}${res}\t"
+done
+echo -e ${heading}
+echo -e $out

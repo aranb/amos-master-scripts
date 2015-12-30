@@ -1,0 +1,64 @@
+#!/bin/bash
+
+export TABLE="usertable"
+export CF="fam"
+export THREADS=150
+export label=$1
+export approx_time=240
+
+export ycsb_cmd="${HOME}/inst/ycsb/bin/ycsb run omid"
+export ycsb_load_cmd="${HOME}/inst/ycsb/bin/ycsb load omid"
+export ycsb_common_params="-cp ${HOME}/inst/ -P ${HOME}/inst/Sworkloada -p table=${TABLE} -p columnfamily=${CF} -p histogram.buckets=10"
+export ycsb_run_params="-s"
+export ycsb_load_params="-threads 1"
+
+export ops_param=" -p operationcount="
+
+
+export batch_size=1000
+export timeout=1
+
+export tso_cmd="${HOME}/inst/tso-server/bin/omid.sh tso -metricsConfigs console:_:10:SECONDS -networkIface eth0 -maxBatchSize ${batch_size}  -batchPersistTimeout ${timeout}"
+
+threads=(1 2 5 10 20 50 100 120 150)
+#threads=(1 2)
+
+for thread in ${threads[@]}; do
+        rate=$(echo "rate=${thread}*300; if (rate>8000) 8000 else rate" | bc -l)
+        ops=$(echo "${rate}*${approx_time}" | bc -l)
+
+        echo ""
+        echo "Approx Rate = "${rate}" ops/sec, Threads="${thread}
+        echo ""
+	
+	#clean hbase and start anew
+	~/bin/clean_hbase.sh
+	~/bin/fresh_start.sh
+
+	#start the tso
+	echo ${tso_cmd}
+	ssh -T tso << EOF &> ~/out/tso-${label}-threads${thread}.txt &
+		${tso_cmd} 
+EOF
+	sleep 5
+
+	#load the database
+	echo ${ycsb_load_cmd} ${ycsb_common_params} ${ycsb_load_params}
+	ssh -T ycsb << EOF
+		${ycsb_load_cmd} ${ycsb_common_params} ${ycsb_load_params}
+EOF
+
+	#start the test
+	echo ${ycsb_cmd} ${ycsb_common_params} ${ycsb_run_params} ${ops_param}${ops} -threads ${thread} 
+	ssh -T ycsb << EOF &> ~/out/${label}-threads${thread}.txt &
+		${ycsb_cmd} ${ycsb_common_params} ${ycsb_run_params} ${ops_param}${ops} -threads ${thread}
+EOF
+	wait $!
+
+	#stop the tso
+	echo "Killing TSO"
+	ssh -T tso <<'EOF'
+		kill `jps | grep TSO | cut -d ' ' -f 1`
+EOF
+
+done;

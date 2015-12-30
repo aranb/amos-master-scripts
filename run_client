@@ -1,0 +1,18 @@
+#!/bin/bash
+
+export w=$2
+
+echo $1 ${ycsb_dir} ${workload_dir}/${w} ${TABLE} ${CF} ${ops}
+
+ssh -T $1 <<-EOF
+	ulimit -Hn 10240
+        ${ycsb_dir}/bin/ycsb run omid \
+        -cp ${ycsb_dir} \
+        -P ${workload_dir}/${w} \
+        -p table=${TABLE} \
+        -p columnfamily=${CF} \
+        -threads ${threads} \
+        -p histogram.buckets=10 \
+        -p operationcount=${ops} \
+        -s
+EOF

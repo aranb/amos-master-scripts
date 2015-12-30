@@ -1,0 +1,23 @@
+#!/bin/awk -f
+
+BEGIN {
+	FS="]? [[]|]"; OFS=",";
+	heading="Time,Ops,Throughput,READ,COMMIT,SINGLETON,START,UPDATE,TRANSACTION,SINGLETON UPDATE,SINGLETON READ";
+	n=split(heading,heading_arr,",");
+	print heading;
+}
+/sec: [^0]/ {
+	split($1,a," "); 
+	for (i=2; i<=NF; i++) {
+		split($(i),b,/ AverageLatency\(us\)=/); 
+		array[b[1]]=b[2]; 
+	}  
+	printf a[1]","a[3]","a[5]","; 
+	for (i=4; i<=n; i++ ) {
+		if (array[heading_arr[i]] == "")
+			printf " ";
+		printf array[heading_arr[i]];
+		if (i<n) printf ",";
+	}
+	printf "\n";
+}

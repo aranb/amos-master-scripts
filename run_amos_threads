@@ -1,0 +1,80 @@
+#!/bin/bash
+
+export TABLE="usertable"
+export CF="fam"
+export THREADS=150
+export label=$1
+shift
+export approx_time=240
+
+export ycsb_cmd="${HOME}/inst/ycsb/bin/ycsb run omid"
+export ycsb_load_cmd="${HOME}/inst/ycsb/bin/ycsb load omid"
+export ycsb_common_params="-cp ${HOME}/inst/ -P ${HOME}/inst/Sworkloada -p table=${TABLE} -p columnfamily=${CF} -p histogram.buckets=10"
+export ycsb_run_params="-s"
+export ycsb_load_params="-threads 100 -s " #-p autoFlush=false"
+
+export ops_param=" -p operationcount="
+export single_thread_speed=200
+export max_capacity=5700
+export splits=15
+
+export load_batch_size=100
+export timeout=200
+
+export tso_cmd="${HOME}/inst/tso-server/bin/omid.sh tso -metricsConfigs console:_:10:SECONDS -networkIface eth0 -batchPersistTimeout ${timeout}"
+export tso_batchsize="-maxBatchSize "
+
+threads=$@ #(1 2 5 10 20 50 100 120 150)
+#threads=(1 2)
+
+for thread in ${threads[@]}; do
+        rate=$(echo "rate=${thread}*${single_thread_speed}; if (rate>${max_capacity}) ${max_capacity} else rate" | bc -l)
+        ops=$(echo "${rate}*${approx_time}" | bc -l)
+
+        echo ""
+        echo "Approx Rate = "${rate}" ops/sec, Threads="${thread}
+        echo ""
+
+        #kill TSO and clients (in case there are any left over
+        ~/bin/kill_clients
+        ~/bin/kill_tso
+	
+	#clean hbase and start anew
+	~/bin/clean_hbase.sh
+	~/bin/fresh_start.sh ${splits}
+
+	#start the tso
+        echo ${tso_cmd} ${tso_batchsize} ${load_batch_size}
+        ssh -T tso << EOF &> ~/out/tsoload-${label}-threads${thread}.txt &
+                ${tso_cmd} ${tso_batchsize} ${load_batch_size}
+EOF
+        sleep 5
+
+	#load the database
+	echo ${ycsb_load_cmd} ${ycsb_common_params} ${ycsb_load_params}
+	ssh -T ycsb << EOF
+		${ycsb_load_cmd} ${ycsb_common_params} ${ycsb_load_params}
+EOF
+
+        #kill the TSO and start a new one with the correct batch size (== no/ of threads)
+        ~/bin/kill_tso
+        echo ${tso_cmd} ${tso_batchsize} 1000
+        ssh -T tso << EOF &> ~/out/tso-${label}-threads${thread}.txt &
+                ${tso_cmd} ${tso_batchsize} 1000
+EOF
+        sleep 5
+
+
+	#start the test
+	echo ${ycsb_cmd} ${ycsb_common_params} ${ycsb_run_params} ${ops_param}${ops} -threads ${thread} 
+	ssh -T ycsb << EOF &> ~/out/${label}-threads${thread}.txt &
+		${ycsb_cmd} ${ycsb_common_params} ${ycsb_run_params} ${ops_param}${ops} -threads ${thread}
+EOF
+	wait $!
+
+	#stop the tso
+	sleep 10
+	echo "Killing TSO"
+	~/bin/kill_tso
+
+done;
