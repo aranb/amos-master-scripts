@@ -15,8 +15,8 @@ export ycsb_load_params="-threads 100 -s " #-p autoFlush=false"
 
 export ops_param=" -p operationcount="
 export single_thread_speed=200
-export max_capacity=5700
-export splits=15
+export max_capacity=9000
+export splits=8
 
 export load_batch_size=100
 export timeout=200
@@ -64,6 +64,13 @@ EOF
 EOF
         sleep 5
 
+        #flush everything to make sure there are files on the disk
+        echo 'Flushing everything'
+        hbase shell << EOF
+                flush 'OMID_COMMIT_TABLE'
+                flush 'OMID_TIMESTAMP'
+                flush 'usertable'
+EOF
 
 	#start the test
 	echo ${ycsb_cmd} ${ycsb_common_params} ${ycsb_run_params} ${ops_param}${ops} -threads ${thread} 
