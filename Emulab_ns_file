@@ -30,24 +30,27 @@ tb-set-node-os $ycsb2 UBUNTU14-64-STD
 set lan [$ns make-lan "$master $slave1 $slave2 $tso $ycsb $ycsb2" 1Gb 0.0ms]
 
 # Disks
-#set bs1 [$ns blockstore]
-#$bs1 set-class "local"
-#$bs1 set-placement "nonsysvol"
-#$bs1 set-mount-point "/mnt/logs"
-#$bs1 set-node $master
+set bs1 [$ns blockstore]
+$bs1 set-class "local"
+$bs1 set-placement "sysvol"
+$bs1 set-mount-point "/mnt/extra"
+$bs1 set-node $master
 
-#set bs2 [$ns blockstore]
-#$bs2 set-class "local"
-#$bs2 set-placement "nonsysvol"
-#$bs2 set-mount-point "/mnt/logs"
-#$bs2 set-node $slave1
+set bs2 [$ns blockstore]
+$bs2 set-class "local"
+$bs2 set-placement "sysvol"
+$bs2 set-mount-point "/mnt/extra"
+$bs2 set-node $slave1
 
-#set bs3 [$ns blockstore]
-#$bs3 set-class "local"
-#$bs3 set-placement "nonsysvol"
-#$bs3 set-mount-point "/mnt/logs"
-#$bs3 set-node $slave2
+set bs3 [$ns blockstore]
+$bs3 set-class "local"
+$bs3 set-placement "sysvol"
+$bs3 set-mount-point "/mnt/extra"
+$bs3 set-node $slave2
+
+tb-set-node-startcmd $master "~/git/amos-master-scripts/emulab-start.sh >& /tmp/start.log"
 
 $ns rtproto Static
 $ns run
+
 

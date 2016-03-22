@@ -3,7 +3,7 @@
 export TABLE="usertable"
 export CF="fam"
 export VERSIONS="1000000"
-
+export bdir=${pdir}
 export splits=$1
 
 hbase shell << EOF
@@ -17,8 +17,8 @@ hbase shell << EOF
 EOF
 
 ssh -T tso << EOF
-   ~/inst/tso-server/bin/omid.sh create-hbase-commit-table -numSplits 3
-   ~/inst/tso-server/bin/omid.sh create-hbase-timestamp-table
+   ${bdir}/inst/tso-server/bin/omid.sh create-hbase-commit-table -numSplits 3
+   ${bdir}/inst/tso-server/bin/omid.sh create-hbase-timestamp-table
 EOF
 
 hbase shell << EOF

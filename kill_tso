@@ -1,6 +1,6 @@
 #!/bin/bash
 
-export jps_bin=/home/y/bin/jps
+export jps_bin=`which jps`
 
 ssh -T tso <<'EOF'
 	processes=`jps | grep TSOServer | cut -d ' ' -f 1`

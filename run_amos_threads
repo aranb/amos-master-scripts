@@ -1,5 +1,7 @@
 #!/bin/bash
 
+export script_base="${HOME}/git/amos-master-scripts"
+export bdir=$pdir   # The base directory
 export TABLE="usertable"
 export CF="fam"
 export THREADS=150
@@ -7,9 +9,9 @@ export label=$1
 shift
 export approx_time=240
 
-export ycsb_cmd="${HOME}/inst/ycsb/bin/ycsb run omid"
-export ycsb_load_cmd="${HOME}/inst/ycsb/bin/ycsb load omid"
-export ycsb_common_params="-cp ${HOME}/inst/ -P ${HOME}/inst/Sworkloada -p table=${TABLE} -p columnfamily=${CF} -p histogram.buckets=10"
+export ycsb_cmd="${bdir}/inst/ycsb/bin/ycsb run omid"
+export ycsb_load_cmd="${bdir}/inst/ycsb/bin/ycsb load omid"
+export ycsb_common_params="-cp ${bdir}/inst/conf -P ${bdir}/inst/Sworkloada -p table=${TABLE} -p columnfamily=${CF} -p histogram.buckets=10"
 export ycsb_run_params="-s"
 export ycsb_load_params="-threads 100 -s " #-p autoFlush=false"
 
@@ -21,7 +23,7 @@ export splits=8
 export load_batch_size=100
 export timeout=200
 
-export tso_cmd="${HOME}/inst/tso-server/bin/omid.sh tso -metricsConfigs console:_:10:SECONDS -networkIface eth0 -batchPersistTimeout ${timeout}"
+export tso_cmd="${bdir}/inst/tso-server/bin/omid.sh tso -metricsConfigs console:_:10:SECONDS -networkIface eth0 -batchPersistTimeout ${timeout}"
 export tso_batchsize="-maxBatchSize "
 
 threads=$@ #(1 2 5 10 20 50 100 120 150)
@@ -36,16 +38,16 @@ for thread in ${threads[@]}; do
         echo ""
 
         #kill TSO and clients (in case there are any left over
-        ~/bin/kill_clients
-        ~/bin/kill_tso
+        ${script_base}/kill_clients
+        ${script_base}/kill_tso
 	
 	#clean hbase and start anew
-	~/bin/clean_hbase.sh
-	~/bin/fresh_start.sh ${splits}
+	${script_base}/clean_hbase.sh
+	${script_base}/fresh_start.sh ${splits}
 
 	#start the tso
         echo ${tso_cmd} ${tso_batchsize} ${load_batch_size}
-        ssh -T tso << EOF &> ~/out/tsoload-${label}-threads${thread}.txt &
+        ssh -T tso << EOF &> ${pdir}/out/tsoload-${label}-threads${thread}.txt &
                 ${tso_cmd} ${tso_batchsize} ${load_batch_size}
 EOF
         sleep 5
@@ -57,9 +59,9 @@ EOF
 EOF
 
         #kill the TSO and start a new one with the correct batch size (== no/ of threads)
-        ~/bin/kill_tso
+        ${script_base}/kill_tso
         echo ${tso_cmd} ${tso_batchsize} 1000
-        ssh -T tso << EOF &> ~/out/tso-${label}-threads${thread}.txt &
+        ssh -T tso << EOF &> ${pdir}/out/tso-${label}-threads${thread}.txt &
                 ${tso_cmd} ${tso_batchsize} 1000
 EOF
         sleep 5
@@ -74,7 +76,7 @@ EOF
 
 	#start the test
 	echo ${ycsb_cmd} ${ycsb_common_params} ${ycsb_run_params} ${ops_param}${ops} -threads ${thread} 
-	ssh -T ycsb << EOF &> ~/out/${label}-threads${thread}.txt &
+	ssh -T ycsb << EOF &> ${pdir}/out/${label}-threads${thread}.txt &
 		${ycsb_cmd} ${ycsb_common_params} ${ycsb_run_params} ${ops_param}${ops} -threads ${thread}
 EOF
 	wait $!
@@ -82,6 +84,6 @@ EOF
 	#stop the tso
 	sleep 10
 	echo "Killing TSO"
-	~/bin/kill_tso
+	${script_base}/kill_tso
 
 done;

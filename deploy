@@ -1,14 +1,16 @@
 #!/bin/bash
 
-conf_folder=~/conf
+tars=${pdir}/tars
+inst=${pdir}/inst
+conf_folder=${pdir}/conf
 ycsb_clients_file=${conf_folder}/ycsb-clients
 master_file=${conf_folder}/master
 regionservers=~/inst/conf/regionservers
 
-export clients=$(<${ycsb_clients_file})
+#export clients=$(<${ycsb_clients_file})
 export master=$(<${master_file})
 
-export hbase_rs=$(<${regionservers})
+#export hbase_rs=$(<${regionservers})
 
 export HBASE_VER=hbase-0.98.15-SNAPSHOT
 export HBASE_TAR=${HBASE_VER}-bin.tar.gz
@@ -17,56 +19,40 @@ export ycsb_dir="~/inst/ycsb"
 
 if [ "$#" -lt 1 ] 
 then
-	echo "Usage: `basename $0` tso|ycsb|hbase" 1>&2
+	echo "Usage: `basename $0` tso|ycsb|hbase|all" 1>&2
 	exit 1
 fi
 export target=$1
 
+cd ${inst}
+
 case ${target} in
 ycsb)
-for client in $clients
-do
-	echo ${client}":"
-	scp ~/inst/ycsb-*tar.gz aran@${client}:~/inst
-	scp ~/inst/*workload* aran@${client}:~/inst
-	ssh -T ${client} << EOF
-		cd ~/inst
-		tar xzvf ycsb-*.tar.gz
-		rm -R ycsb
-		mv ycsb-0.1.4 ycsb
-		cp hbase-site.xml ycsb
-EOF
-done
-;;
+	cp ${tars}/ycsb-*tar.gz ${inst}/
+	cp ~/git/amos-master-scripts/*worload* ${inst}/
+	tar xzvf ycsb-*tar.gz
+	rm -R ycsb
+	mv ycsb-0.1.4 ycsb
+	cp conf/hbase-site.xml ycsb
+	rm ycsb-*tar.gz
+	;;
 tso)
-scp ~/inst/tso-server-bin.tar.gz aran@tso:~/inst
-ssh -T tso << EOF
-	cd ~/inst
-	tar xvzf tso-server-bin.tar.gz
-	cp ~/inst/hbase-site.xml tso-server/conf/
-EOF
-;;
+	cp ${tars}/tso-server*bin.tar.gz
+	tar xvzf tso-server-*bin.tar.gz
+	rm -R tso-server
+	mv tso-server-2.3.13 tso-server
+	cp conf/hbase-site.xml tso-server/conf/
+	;;
 hbase)
-for server in $hbase_rs
-do
-	echo ${server}":"
-	if [ ${server} != ${master} ]
-	then
-		scp ~/inst/${HBASE_TAR} aran@${server}:~/inst
-		scp ~/inst/conf/* aran@${server}:~/inst/conf/
-	fi
-	ssh -T ${server} << EOF
-		cd ~/inst
-		rm -R hbase
-		tar xzvf ${HBASE_TAR}
-		mv ${HBASE_VER} hbase
-		cp conf/* hbase/conf/
-EOF
-done
-;;
+	cp ${tars}/${HBASE_TAR} ${inst}
+	rm -R hbase
+	tar xzvf ${HBASE_TAR}
+	mv ${HBASE_VER} hbase
+	cp conf/* hbase/conf/
+	;;
 all)
-deploy hbase
-deploy tso
-deploy ycsb
-;;
+	deploy hbase
+	deploy tso
+	deploy ycsb
+	;;
 esac

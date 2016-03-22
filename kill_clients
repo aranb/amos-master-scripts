@@ -1,6 +1,6 @@
 #!/bin/bash
 
-export jps_bin=/home/y/bin/jps
+export jps_bin=`which jps`
 export conf_dir=~/conf
 export clients=$(<${conf_dir}/ycsb-clients)
 
