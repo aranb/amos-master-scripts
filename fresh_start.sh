@@ -11,7 +11,7 @@ hbase shell << EOF
    disable '${TABLE}'
    drop '${TABLE}'
    n_splits = ${splits}
-   create '${TABLE}', '${CF}', {SPLITS => (1..n_splits).map {|i| "user#{i*(10000/(n_splits+1))}"}}
+   create '${TABLE}', '${CF}'#, {SPLITS => (1..n_splits).map {|i| "user#{i*(10000/(n_splits+1))}"}}
    alter '${TABLE}', {NAME=>'${CF}', VERSIONS=>${VERSIONS}}
    describe '${TABLE}'
 EOF

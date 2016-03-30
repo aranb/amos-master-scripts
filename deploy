@@ -1,6 +1,6 @@
 #!/bin/bash
 
-tars=${pdir}/tars
+tars=${pdir}/tars/amos
 inst=${pdir}/inst
 conf_folder=${pdir}/conf
 ycsb_clients_file=${conf_folder}/ycsb-clients
