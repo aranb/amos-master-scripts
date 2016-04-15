@@ -14,8 +14,8 @@ export ycsb_run_params="-s"
 export ycsb_load_params="-threads 100 -s"
 
 export ops_param=" -p operationcount="
-export single_thread_speed=200
-export max_capacity=9000
+export single_thread_speed=120
+export max_capacity=3200
 export splits=8
 
 export load_batch_size=100

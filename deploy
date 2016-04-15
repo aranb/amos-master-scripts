@@ -1,6 +1,6 @@
 #!/bin/bash
 
-tars=${pdir}/tars/amos
+tars=${pdir}/tars
 inst=${pdir}/inst
 conf_folder=${pdir}/conf
 ycsb_clients_file=${conf_folder}/ycsb-clients
@@ -17,19 +17,23 @@ export HBASE_TAR=${HBASE_VER}-bin.tar.gz
 
 export ycsb_dir="~/inst/ycsb"
 
-if [ "$#" -lt 1 ] 
+if [ "$#" -lt 2 ] 
 then
-	echo "Usage: `basename $0` tso|ycsb|hbase|all" 1>&2
+	echo "Usage: `basename $0` amos|hbase|omid tso|ycsb|hbase|all" 1>&2
 	exit 1
 fi
+export src=$1
+shift
 export target=$1
+
+tars="${tars}/${src}"
 
 cd ${inst}
 
 case ${target} in
 ycsb)
 	cp ${tars}/ycsb-*tar.gz ${inst}/
-	cp ~/git/amos-master-scripts/*worload* ${inst}/
+	cp ~/git/amos-master-scripts/*workload* ${inst}/
 	tar xzvf ycsb-*tar.gz
 	rm -R ycsb
 	mv ycsb-0.1.4 ycsb
@@ -37,11 +41,12 @@ ycsb)
 	rm ycsb-*tar.gz
 	;;
 tso)
-	cp ${tars}/tso-server*bin.tar.gz
+	cp ${tars}/tso-server*bin.tar.gz ${inst}
 	tar xvzf tso-server-*bin.tar.gz
 	rm -R tso-server
 	mv tso-server-2.3.13 tso-server
 	cp conf/hbase-site.xml tso-server/conf/
+	rm tso-server-*bin.tar.gz
 	;;
 hbase)
 	cp ${tars}/${HBASE_TAR} ${inst}
@@ -49,10 +54,11 @@ hbase)
 	tar xzvf ${HBASE_TAR}
 	mv ${HBASE_VER} hbase
 	cp conf/* hbase/conf/
+	rm ${HBASE_TAR}
 	;;
 all)
-	deploy hbase
-	deploy tso
-	deploy ycsb
+	deploy $src hbase
+	deploy $src tso
+	deploy $src ycsb
 	;;
 esac

@@ -15,8 +15,8 @@ export max_capacity=$1
 shift
 export approx_time=360
 
-export ycsb_cmd="${bdir}/inst/ycsb/bin/ycsb run omid"
-export ycsb_load_cmd="${bdir}/inst/ycsb/bin/ycsb load omid"
+export ycsb_cmd="${bdir}/inst/ycsb/bin/ycsb run hbase"
+export ycsb_load_cmd="${bdir}/inst/ycsb/bin/ycsb load hbase"
 export ycsb_common_params="-cp ${bdir}/inst/conf -P ${bdir}/inst/${workload} -p table=${TABLE} -p columnfamily=${CF} -p histogram.buckets=10"
 export ycsb_run_params="-s"
 export ycsb_load_params="-threads 100 -s " #-p autoFlush=false"
@@ -37,6 +37,8 @@ export tso_batchsize="-maxBatchSize "
 threads=$@ #(1 2 5 10 20 50 100 120 150)
 #threads=(1 2)
 
+${script_base}/clean_hbase.sh
+
 for thread in ${threads[@]}; do
         rate=$(echo "rate=${thread}*${single_thread_speed}; if (rate>${max_capacity}) ${max_capacity} else rate" | bc -l)
         ops=$(echo "${rate}*${approx_time}" | bc -l)
@@ -52,30 +54,17 @@ for thread in ${threads[@]}; do
 	
 	#clean hbase and start anew
 	stop-hbase.sh
+	sleep 5
 	start-hbase.sh
-	${script_base}/clean_hbase.sh
-	${script_base}/fresh_start.sh ${splits}
+	sleep 3
+	${script_base}/fresh_hbase_start.sh ${splits}
 
-	#start the tso
-        echo ${tso_cmd} ${tso_batchsize} ${load_batch_size}
-        ssh -T tso << EOF &> ${pdir}/out/tsoload-${label}-threads${thread}.txt &
-                ${tso_cmd} ${tso_batchsize} ${load_batch_size}
-EOF
-        sleep 5
 
 	#load the database
 	echo ${ycsb_load_cmd} ${ycsb_common_params} ${ycsb_load_params}
 	ssh -T ycsb << EOF
 		${ycsb_load_cmd} ${ycsb_common_params} ${ycsb_load_params}
 EOF
-
-        #kill the TSO and start a new one with the correct batch size (== no/ of threads)
-        ${script_base}/kill_tso
-        echo ${tso_cmd} ${tso_batchsize} 1000
-        ssh -T tso << EOF &> ${pdir}/out/tso-${label}-threads${thread}.txt &
-                ${tso_cmd} ${tso_batchsize} 1000
-EOF
-        sleep 5
 
         #flush everything to make sure there are files on the disk
         #echo 'Flushing everything'
@@ -93,11 +82,6 @@ EOF
 EOF
 	wait $!
 	hbase org.jruby.Main ~/git/amos-master-scripts/RegionsStats.rb
-
-	#stop the tso
-	sleep 12
-	echo "Killing TSO"
-	${script_base}/kill_tso
 
 done;
 mail_cmd="echo `basename $0` \"finished with parameters = ${threads}\" | mail -s \"Test ${label}\" aran.bergman@gmail.com"

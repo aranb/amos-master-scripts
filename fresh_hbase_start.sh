@@ -16,11 +16,6 @@ hbase shell << EOF
    describe '${TABLE}'
 EOF
 
-ssh -T tso << EOF
-   ${bdir}/inst/tso-server/bin/omid.sh create-hbase-commit-table -numSplits 2
-   ${bdir}/inst/tso-server/bin/omid.sh create-hbase-timestamp-table
-EOF
-
 hbase shell << EOF
    list
 EOF

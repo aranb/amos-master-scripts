@@ -1,0 +1,5 @@
+#!/bin/bash
+
+label=amosMixUpdate_1Ru3Rc; nohup run_amos_threads $label Sworkload-um 100 &>> $pdir/out/${label}.log & 
+wait $!
+#label=amosMixRead_1Ru3Rc; nohup run_amos_threads $label Sworkload-rm 5 10 15 20 25 60  &>> $pdir/out/${label}.log &

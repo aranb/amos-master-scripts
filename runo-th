@@ -1,0 +1,22 @@
+#!/bin/bash
+
+threads="1 120 20 3 5 10 15 25 30 40 60 80 100"
+
+suffix="1Ru2Rc-noReadTSO-noflush"
+
+label=omidTxnUpdate_${suffix}
+nohup run_amos_threads $label Tworkloadu 120 5400 ${threads} &>> $pdir/out/${label}.log & 
+wait $!
+
+label=omidTxnRead_${suffix}
+nohup run_amos_threads $label Tworkloadr 1400 26000 ${threads} &>> $pdir/out/${label}.log & 
+wait $!
+
+label=hbaseUpdate_${suffix}
+nohup run_hbase_threads $label Hworkloadu 560 13000 ${threads} &>> $pdir/out/${label}.log &
+wait $!
+
+label=hbaseRead_${suffix}
+nohup run_hbase_threads $label Hworkloadr 3000 26000 ${threads} &>> $pdir/out/${label}.log &
+wait $!
+

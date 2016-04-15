@@ -9,10 +9,6 @@ export label=$1
 shift
 export workload=$1
 shift
-export single_thread_speed=$1
-shift
-export max_capacity=$1
-shift
 export approx_time=360
 
 export ycsb_cmd="${bdir}/inst/ycsb/bin/ycsb run omid"
@@ -22,8 +18,8 @@ export ycsb_run_params="-s"
 export ycsb_load_params="-threads 100 -s " #-p autoFlush=false"
 
 export ops_param=" -p operationcount="
-#export single_thread_speed=200	
-#export max_capacity=8000
+export single_thread_speed=350
+export max_capacity=13000
 export splits=0
 
 export load_batch_size=100
@@ -34,31 +30,28 @@ export iface=$(ssh tso ifconfig | grep -B1 `grep tso /etc/hosts | cut -f 1` | he
 export tso_cmd="${bdir}/inst/tso-server/bin/omid.sh tso -metricsConfigs console:_:10:SECONDS -networkIface ${iface} -batchPersistTimeout ${timeout}"
 export tso_batchsize="-maxBatchSize "
 
-threads=$@ #(1 2 5 10 20 50 100 120 150)
-#threads=(1 2)
+rates=$@ 
+threads=150
 
-for thread in ${threads[@]}; do
-        rate=$(echo "rate=${thread}*${single_thread_speed}; if (rate>${max_capacity}) ${max_capacity} else rate" | bc -l)
+for rate in ${rates[@]}; do
+        #rate=$(echo "rate=${thread}*${single_thread_speed}; if (rate>${max_capacity}) ${max_capacity} else rate" | bc -l)
         ops=$(echo "${rate}*${approx_time}" | bc -l)
 
-        echo "********************************************************************************"
-	date
-        echo "Approx Rate = "${rate}" ops/sec, Threads="${thread}
-        echo "********************************************************************************"
+        echo ""
+        echo "Approx Rate = "${rate}" ops/sec, Threads="${threads}
+        echo ""
 
         #kill TSO and clients (in case there are any left over
         ${script_base}/kill_clients
         ${script_base}/kill_tso
 	
 	#clean hbase and start anew
-	stop-hbase.sh
-	start-hbase.sh
 	${script_base}/clean_hbase.sh
 	${script_base}/fresh_start.sh ${splits}
 
 	#start the tso
         echo ${tso_cmd} ${tso_batchsize} ${load_batch_size}
-        ssh -T tso << EOF &> ${pdir}/out/tsoload-${label}-threads${thread}.txt &
+        ssh -T tso << EOF &> ${pdir}/out/tsoload-${label}-rates${rate}.txt &
                 ${tso_cmd} ${tso_batchsize} ${load_batch_size}
 EOF
         sleep 5
@@ -72,24 +65,24 @@ EOF
         #kill the TSO and start a new one with the correct batch size (== no/ of threads)
         ${script_base}/kill_tso
         echo ${tso_cmd} ${tso_batchsize} 1000
-        ssh -T tso << EOF &> ${pdir}/out/tso-${label}-threads${thread}.txt &
+        ssh -T tso << EOF &> ${pdir}/out/tso-${label}-rates${rate}.txt &
                 ${tso_cmd} ${tso_batchsize} 1000
 EOF
         sleep 5
 
         #flush everything to make sure there are files on the disk
-        #echo 'Flushing everything'
-        #hbase shell << EOF
-        #        flush 'OMID_COMMIT_TABLE'
-        #        flush 'OMID_TIMESTAMP'
-        #        flush 'usertable'
-#EOF
+        echo 'Flushing everything'
+        hbase shell << EOF
+                flush 'OMID_COMMIT_TABLE'
+                flush 'OMID_TIMESTAMP'
+                flush 'usertable'
+EOF
 	
 	hbase org.jruby.Main ~/git/amos-master-scripts/RegionsStats.rb
 	#start the test
-	echo ${ycsb_cmd} ${ycsb_common_params} ${ycsb_run_params} ${ops_param}${ops} -threads ${thread} 
-	ssh -T ycsb << EOF &> ${pdir}/out/${label}-threads${thread}.txt &
-		${ycsb_cmd} ${ycsb_common_params} ${ycsb_run_params} ${ops_param}${ops} -threads ${thread}
+	echo ${ycsb_cmd} ${ycsb_common_params} ${ycsb_run_params} ${ops_param}${ops} -threads ${threads} -target ${rate}
+	ssh -T ycsb << EOF &> ${pdir}/out/${label}-rates${rate}.txt &
+		${ycsb_cmd} ${ycsb_common_params} ${ycsb_run_params} ${ops_param}${ops} -threads ${threads} -target ${rate}
 EOF
 	wait $!
 	hbase org.jruby.Main ~/git/amos-master-scripts/RegionsStats.rb
@@ -100,5 +93,5 @@ EOF
 	${script_base}/kill_tso
 
 done;
-mail_cmd="echo `basename $0` \"finished with parameters = ${threads}\" | mail -s \"Test ${label}\" aran.bergman@gmail.com"
+mail_cmd="echo `basename $0` \"finished with parameters = ${rates}\" | mail -s \"Test ${label}\" aran.bergman@gmail.com"
 ssh users.emulab.net $mail_cmd

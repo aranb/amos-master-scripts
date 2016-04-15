@@ -1,0 +1,14 @@
+#!/bin/bash
+
+label=amosMixUpdate_rates1Ru3Rc; nohup run_amos_rate $label Sworkload-um 1700 &>> $pdir/out/${label}.log &
+wait $!
+
+#label=amosTxnRead_rates1Ru3Rc; nohup run_amos_rate $label Sworkload-rt 2600 5100 6100 7100 &>> $pdir/out/${label}.log &
+#wait $!
+
+#label=amosSingletonRead_rates1Ru3Rc; nohup run_amos_rate $label Sworkload-rs 18100 18400 &>> $pdir/out/${label}.log &
+#wait $!
+
+label=amosMixRead_rates1Ru3Rc; nohup run_amos_rate $label Sworkload-rm 10100 11100 12000 &>> $pdir/out/${label}.log &
+wait $!
+
