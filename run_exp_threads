@@ -34,12 +34,13 @@ export iface=$(ssh tso ifconfig | grep -B1 `grep tso /etc/hosts | cut -f 1` | he
 export tso_cmd="${bdir}/inst/tso-server/bin/omid.sh tso -metricsConfigs console:_:10:SECONDS -networkIface ${iface} -batchPersistTimeout ${timeout}"
 export tso_batchsize="-maxBatchSize "
 
-threads=$@ #(1 2 5 10 20 50 100 120 150)
-#threads=(1 2)
+threads=$@ 
+
+ops=$(echo "${approx_time}*${max_capacity}" | bc -l)
 
 for thread in ${threads[@]}; do
-        rate=$(echo "rate=${thread}*${single_thread_speed}; if (rate>${max_capacity}) ${max_capacity} else rate" | bc -l)
-        ops=$(echo "${rate}*${approx_time}" | bc -l)
+        #rate=$(echo "rate=${thread}*${single_thread_speed}; if (rate>${max_capacity}) ${max_capacity} else rate" | bc -l)
+        #ops=$(echo "${rate}*${approx_time}" | bc -l)
 
         echo "********************************************************************************"
 	date
